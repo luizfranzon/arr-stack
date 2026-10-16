@@ -1,0 +1,63 @@
+x-env: &env
+  PUID: 1000
+  PGID: 1000
+  TZ: America/Sao_Paulo
+
+x-arr: &arr
+  restart: unless-stopped
+
+services:
+  prowlarr:
+    <<: *arr
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    ports: ["9696:9696"]
+    environment:
+      <<: *env
+      PROWLARR__AUTH__APIKEY: ${PROWLARR_KEY}
+    volumes:
+      - ./config/prowlarr:/config
+
+  sonarr:
+    <<: *arr
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    ports: ["8989:8989"]
+    environment:
+      <<: *env
+      SONARR__AUTH__APIKEY: ${SONARR_KEY}
+    volumes:
+      - ./config/sonarr:/config
+      - ./data:/data
+
+  radarr:
+    <<: *arr
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    ports: ["7878:7878"]
+    environment:
+      <<: *env
+      RADARR__AUTH__APIKEY: ${RADARR_KEY}
+    volumes:
+      - ./config/radarr:/config
+      - ./data:/data
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    ports: ["8191:8191"]
+    environment:
+      TZ: America/Sao_Paulo
+      LOG_LEVEL: info
+
+  arr-init:
+    image: curlimages/curl:latest
+    depends_on: [prowlarr, sonarr, radarr, flaresolverr]
+    restart: "no"
+    environment:
+      PROWLARR_KEY: ${PROWLARR_KEY}
+      SONARR_KEY: ${SONARR_KEY}
+      RADARR_KEY: ${RADARR_KEY}
+    volumes: ["./init/setup.sh:/setup.sh:ro"]
+    entrypoint: ["sh", "/setup.sh"]
